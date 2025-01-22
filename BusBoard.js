@@ -1,26 +1,7 @@
-import fetch from 'node-fetch';
-import { createRequire } from "module";
-const require = createRequire(import.meta.url);
-const readline = require('readline-sync');
-
-// (The stop code is 490008660N).
+import { getPostCode, convertToMinutes, getNearestStopPoints, getNextArrivals } from './utils.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals } from './fetch.js';
 
 const api_key = process.env.API_KEY
-
-const fetchTfl = async (stopCode,api_key) => {
-    const response = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopCode}/Arrivals?api=${api_key}`);
-    return response;
-}
-
-const fetchTflStopPoints = async (postCodeResponse,api_key) => {
-    const response = await fetch(`https://api.tfl.gov.uk/StopPoint/?lat=${postCodeResponse.result.latitude}&lon=${postCodeResponse.result.longitude}&stopTypes=NaptanPublicBusCoachTram&modes=bus`);
-    return response;
-}
-
-const fetchPostCode = async (postCode) => {
-    const response = await fetch(`https://api.postcodes.io/postcodes/${postCode}`);    
-    return response;
-}
 
 const printHeading = () => {
     console.log("============================================================");
@@ -28,83 +9,35 @@ const printHeading = () => {
     console.log("============================================================");
 }
 
-const getPostCode=() => {
-    console.log("Please enter the post code :");
-    return readline.prompt();
-}
-
-const convertToMinutes = (seconds) => {
-    const minutes = Math.floor(seconds / 60);
-
-    return minutes;
-};
-
-
-const getDataFromResponse = (data) => {
-    const arr = [];
-
-    data.forEach(element => {
-        const obj = {
-            lineId: element.lineId,
-            timeToStation: convertToMinutes(element.timeToStation),
-            destinationName: element.destinationName,
-            towards: element.towards
-        };
-    
-        arr.push(obj);
-        
-    });
-    
-    arr.sort((a,b) => a.timeToStation - b.timeToStation);
-
-    return arr.slice(0, 5);
-}
-
-
-
 const printData = (data) => {
-    const output = getDataFromResponse(data);
-
     printHeading();
-    output.forEach(element => {
+    data.forEach(element => {
         console.log(element.lineId + "\t" + element.timeToStation + "\t" + element.destinationName + "\t" + element.towards)  
     })
 }
 
-const getStopPoints = (stopPoints) => {
-    const arrStopPoints = [];
-    stopPoints.stopPoints.forEach(element => {
-        const obj = {
-            naptanId: element.naptanId,
-            distance: element.distance
-        };
-        arrStopPoints.push(obj);
-
-    });
-
-    arrStopPoints.sort((a,b) => a.distance - b.distance);
-    return arrStopPoints;
-}
-
-
-// Starting point
+// Asking the user to enter a postcode
 const postCode = getPostCode();
-const postCodeResponse = await fetchPostCode(postCode);
+
+// Getting information about the entered postcode
+const postCodeResponse = await fetchPostCodeInfo(postCode);
 const postCodeData = await postCodeResponse.json();
 
-// GEt stop points from TFL
+// Getting a list of nearest stop points
 const tflStopPointsResponse = await fetchTflStopPoints(postCodeData,api_key);
-const stopPoints = await tflStopPointsResponse.json();
+const stopPointsData = await tflStopPointsResponse.json();
+const stopPoints = getNearestStopPoints(stopPointsData);
 
-const arrStopPoints = getStopPoints(stopPoints);
+// Getting a list of arriving buses for the first stop point
+const tflFirstStopResponse = await fetchTflArrivals(stopPoints[0].naptanId,api_key);
+const firstStopData = await tflFirstStopResponse.json();
 
-const tflResponse = await fetchTfl(arrStopPoints[0].naptanId,api_key);
-const data1 = await tflResponse.json();
-printData(data1);
+// Getting a list of arriving buses for the second stop point
+let tflSecondStopResponse = await fetchTflArrivals(stopPoints[1].naptanId,api_key);
+const secondStopData = await tflSecondStopResponse.json();
 
-let response = await fetchTfl(arrStopPoints[1].naptanId,api_key);
-const data2 = await response.json();
-printData(data2);
+printData(getNextArrivals(firstStopData));
+printData(getNextArrivals(secondStopData));
 
 
 
