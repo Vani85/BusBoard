@@ -1,43 +1,67 @@
-import { getPostCode, convertToMinutes, getNearestStopPoints, getNextArrivals } from './utils.js';
+import { convertToMinutes, getNearestStopPoints, getNextArrivals } from './utils.js';
 import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals } from './fetch.js';
+import readlineSync from 'readline-sync';
 
 const api_key = process.env.API_KEY
 
+
+export const getPostCode = () => {
+    console.log("Please enter the post code :");
+
+    return readlineSync.prompt();
+}
 const printHeading = () => {
     console.log("============================================================");
     console.log('Bus' + "\t" + 'Time' + "\t" + 'Destination' + "\t" + 'Route'); 
     console.log("============================================================");
 }
 
-const printData = (data) => {
+const printBusInformation = (data) => {
     printHeading();
     data.forEach(element => {
         console.log(element.lineId + "\t" + element.timeToStation + "\t" + element.destinationName + "\t" + element.towards)  
     })
 }
 
-// Asking the user to enter a postcode
-const postCode = getPostCode();
+const getPostCodeInformation = async() => {
+    const postCode = getPostCode();
+    const postCodeResponse = await fetchPostCodeInfo(postCode);
+    const postCodeData = await postCodeResponse.json();
+    return postCodeData;
+}
 
-// Getting information about the entered postcode
-const postCodeResponse = await fetchPostCodeInfo(postCode);
-const postCodeData = await postCodeResponse.json();
+const getBusStopPointsFromPostCode = async(postCodeData) => {
+    const tflStopPointsResponse = await fetchTflStopPoints(postCodeData,api_key);
+    const stopPointsData = await tflStopPointsResponse.json();
+    const stopPoints = getNearestStopPoints(stopPointsData).slice(0,2);
+    return stopPoints;
+}
 
-// Getting a list of nearest stop points
-const tflStopPointsResponse = await fetchTflStopPoints(postCodeData,api_key);
-const stopPointsData = await tflStopPointsResponse.json();
-const stopPoints = getNearestStopPoints(stopPointsData);
 
-// Getting a list of arriving buses for the first stop point
-const tflFirstStopResponse = await fetchTflArrivals(stopPoints[0].naptanId,api_key);
-const firstStopData = await tflFirstStopResponse.json();
+const getArrivalInformationForAStopPoint = async(point) => {
+    const tflStopResponse = await fetchTflArrivals(point.naptanId,api_key);
+    const stopPointsData = await tflStopResponse.json();
 
-// Getting a list of arriving buses for the second stop point
-let tflSecondStopResponse = await fetchTflArrivals(stopPoints[1].naptanId,api_key);
-const secondStopData = await tflSecondStopResponse.json();
+    return stopPointsData;
+}
 
-printData(getNextArrivals(firstStopData));
-printData(getNextArrivals(secondStopData));
+const getArrivalInformationForAllStopPoints = async(stopPoints) => {
+    const arrivalInformation = [];
+    stopPoints.forEach((point) => {
+        arrivalInformation.push(getArrivalInformationForAStopPoint(point));
+    })   
 
+    return Promise.all(arrivalInformation);
+}
+
+
+const postCode = await getPostCodeInformation();
+const stopPoints = await getBusStopPointsFromPostCode(postCode);
+const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);
+
+arrivalInformation.forEach((arrivals) => {
+    printBusInformation(getNextArrivals(arrivals));
+})
+ 
 
 

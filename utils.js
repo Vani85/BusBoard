@@ -1,10 +1,6 @@
-import readlineSync from 'readline-sync';
 
-export const getPostCode = () => {
-    console.log("Please enter the post code :");
 
-    return readlineSync.prompt();
-}
+
 
 export const convertToMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
