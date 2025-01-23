@@ -7,7 +7,7 @@ export const convertToMinutes = (seconds) => {
     return minutes;
 };
 
-export const getNearestStopPoints = (stopPoints) => {
+export const getNearestStopPoints = (stopPoints,numberOfStopPoints) => {
     const arrStopPoints = [];
     stopPoints.stopPoints.forEach(({naptanId, distance}) => {
         const stopPoint = {
@@ -17,10 +17,12 @@ export const getNearestStopPoints = (stopPoints) => {
         arrStopPoints.push(stopPoint);
 
     });
-
-    arrStopPoints.sort((a,b) => a.distance - b.distance);
-
-    return arrStopPoints;
+    
+    if (!arrStopPoints.length) {
+        return null;
+    }
+        
+    return arrStopPoints.sort((a,b) => a.distance - b.distance).slice(0,numberOfStopPoints);
 }
 
 export const getNextArrivals = (data, maxArrivals = 5) => {

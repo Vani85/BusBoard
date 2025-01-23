@@ -25,3 +25,12 @@ export const validateResponse = (response) => {
 
     return true;
 } 
+
+export const validatePostCode = (response) => {   
+    if (response.status !== 200 && response.statusText == 'Not Found') {
+        return false;
+    } 
+
+    return true;
+}
+

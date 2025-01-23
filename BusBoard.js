@@ -1,5 +1,5 @@
 import { convertToMinutes, getNearestStopPoints, getNextArrivals } from './utils.js';
-import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validateResponse } from './fetch.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validateResponse, validatePostCode} from './fetch.js';
 import readlineSync from 'readline-sync';
 
 const api_key = process.env.API_KEY
@@ -26,21 +26,25 @@ const printBusInformation = (data) => {
 
 
 const getPostCodeInformation = async() => {
-    const postCode = getPostCode();
-    const postCodeResponse = await fetchPostCodeInfo(postCode);
-    if (!validateResponse(postCodeResponse)) {
-        console.log('You entered wrong postcode')
-        return false;
-    }
+    try {
+        const postCode = getPostCode();
+        const postCodeResponse = await fetchPostCodeInfo(postCode);
+        if (!validatePostCode(postCodeResponse)) {
+            console.log('You entered wrong postcode')
+            return false;
+        }
 
-    const postCodeData = await postCodeResponse.json();
-    return postCodeData;
+        const postCodeData = await postCodeResponse.json();
+        return postCodeData;
+    } catch(error) {
+        throw error;
+    }
 }
 
 const getBusStopPointsFromPostCode = async(postCodeData) => {
     const tflStopPointsResponse = await fetchTflStopPoints(postCodeData,api_key);
     const stopPointsData = await tflStopPointsResponse.json();
-    const stopPoints = getNearestStopPoints(stopPointsData).slice(0,2);
+    const stopPoints = getNearestStopPoints(stopPointsData,2);
     return stopPoints;
 }
 
@@ -48,7 +52,6 @@ const getBusStopPointsFromPostCode = async(postCodeData) => {
 const getArrivalInformationForAStopPoint = async(point) => {
     const tflStopResponse = await fetchTflArrivals(point.naptanId,api_key);
     const stopPointsData = await tflStopResponse.json();
-
     return stopPointsData;
 }
 
@@ -58,22 +61,38 @@ const getArrivalInformationForAllStopPoints = async(stopPoints) => {
         arrivalInformation.push(getArrivalInformationForAStopPoint(point));
     })   
 
+    if (!arrivalInformation.length) {
+        return null;
+    }
+
     return Promise.all(arrivalInformation);
 }
 
+try {
+    let postCode = await getPostCodeInformation();
 
-let postCode = await getPostCodeInformation();
+    while (!postCode) {
+        postCode = await getPostCodeInformation();
+    }
 
-while (!postCode) {
-    postCode = await getPostCodeInformation();
+    const stopPoints = await getBusStopPointsFromPostCode(postCode);
+    if(stopPoints!==null) {
+        const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);
+
+        if (arrivalInformation !== null) {
+            arrivalInformation.forEach((arrivals) => {
+                printBusInformation(getNextArrivals(arrivals));
+            })
+        } else {
+            console.log('Found no buses coming')
+        }
+
+    } else {
+        console.log("Found no stop points for the given post code");
+    }
+} catch(error) {
+    console.log(error);
 }
-
-const stopPoints = await getBusStopPointsFromPostCode(postCode);
-const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);
-
-arrivalInformation.forEach((arrivals) => {
-    printBusInformation(getNextArrivals(arrivals));
-})
 
  
 
