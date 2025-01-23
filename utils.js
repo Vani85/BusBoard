@@ -25,11 +25,12 @@ export const getNearestStopPoints = (stopPoints,numberOfStopPoints) => {
     return arrStopPoints.sort((a,b) => a.distance - b.distance).slice(0,numberOfStopPoints);
 }
 
-export const getNextArrivals = (data, maxArrivals = 5) => {
+export const parseAndReturnArrivalData = (data, maxArrivals = 5) => {
     const arrivals = [];
 
-    data.forEach(({lineId, timeToStation, destinationName, towards}) => {
+    data.forEach(({naptanId,lineId, timeToStation, destinationName, towards}) => {
         const arrival = {
+            naptanId,
             lineId,
             timeToStation: convertToMinutes(timeToStation),
             destinationName,
@@ -40,6 +41,5 @@ export const getNextArrivals = (data, maxArrivals = 5) => {
     });
     
     arrivals.sort((a,b) => a.timeToStation - b.timeToStation);
-
     return arrivals.slice(0, maxArrivals);
 }
