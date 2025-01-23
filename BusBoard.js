@@ -1,5 +1,5 @@
 import { convertToMinutes, getNearestStopPoints, getNextArrivals } from './utils.js';
-import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals } from './fetch.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validateResponse } from './fetch.js';
 import readlineSync from 'readline-sync';
 
 const api_key = process.env.API_KEY
@@ -10,6 +10,7 @@ export const getPostCode = () => {
 
     return readlineSync.prompt();
 }
+
 const printHeading = () => {
     console.log("============================================================");
     console.log('Bus' + "\t" + 'Time' + "\t" + 'Destination' + "\t" + 'Route'); 
@@ -23,9 +24,15 @@ const printBusInformation = (data) => {
     })
 }
 
+
 const getPostCodeInformation = async() => {
     const postCode = getPostCode();
     const postCodeResponse = await fetchPostCodeInfo(postCode);
+    if (!validateResponse(postCodeResponse)) {
+        console.log('You entered wrong postcode')
+        return false;
+    }
+
     const postCodeData = await postCodeResponse.json();
     return postCodeData;
 }
@@ -55,13 +62,19 @@ const getArrivalInformationForAllStopPoints = async(stopPoints) => {
 }
 
 
-const postCode = await getPostCodeInformation();
+let postCode = await getPostCodeInformation();
+
+while (!postCode) {
+    postCode = await getPostCodeInformation();
+}
+
 const stopPoints = await getBusStopPointsFromPostCode(postCode);
 const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);
 
 arrivalInformation.forEach((arrivals) => {
     printBusInformation(getNextArrivals(arrivals));
 })
+
  
 
 

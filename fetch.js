@@ -17,3 +17,11 @@ export const fetchTflArrivals = async (stopCode, api_key) => {
     
     return response;
 }
+
+export const validateResponse = (response) => {
+    if (response.status !== 200) {
+        return false;
+    } 
+
+    return true;
+} 

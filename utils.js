@@ -1,7 +1,6 @@
 
 
 
-
 export const convertToMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
 
@@ -34,7 +33,6 @@ export const getNextArrivals = (data, maxArrivals = 5) => {
             destinationName,
             towards
         };
-    
         arrivals.push(arrival);
         
     });
