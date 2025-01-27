@@ -1,5 +1,5 @@
 import { convertToMinutes, getNearestStopPoints, parseAndReturnArrivalData } from './utils.js';
-import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validatePostCode} from './fetch.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validatePostCode, fetchDirectionToStopPoint} from './fetch.js';
 import readlineSync from 'readline-sync';
 
 export const getPostCode = () => {
@@ -43,6 +43,21 @@ const getBusStopPointsFromPostCode = async(postCodeData) => {
     return stopPoints;
 }
 
+const getDirectionInformationForAStopPoint = async(postCode, naptanId) => {
+    const tflDirectionResponse = fetchDirectionToStopPoint(postCode, naptanId);
+    const tflDirectionData = (await tflDirectionResponse).json();
+
+    return tflDirectionData;
+}
+
+const getDirectionInformation = async(postCode, stopPoints) => {
+    const directionInformation = [];    
+    stopPoints.forEach((point) => {
+        directionInformation.push(getDirectionInformationForAStopPoint(postCode, point.naptanId));
+    })
+    return Promise.all(directionInformation);
+}
+
 const getArrivalInformationForAStopPoint = async(point) => {
     const tflStopResponse = await fetchTflArrivals(point.naptanId);
     const stopPointsData  = await tflStopResponse.json();
@@ -73,11 +88,18 @@ try {
 
     const stopPoints = await getBusStopPointsFromPostCode(postCodeInformation);
     if(stopPoints!==null) {
-        const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);
+
+        const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);  
+        const directionInformation = await getDirectionInformation(postCode, stopPoints);      
+
         if (arrivalInformation !== null) {
             arrivalInformation.forEach((arrivals) => {
                 printBusInformation(parseAndReturnArrivalData(arrivals));
             })
+            
+            for (let directionInfo of directionInformation) {
+                console.log(directionInfo);
+            }
         } else {
             console.log('There are currently no busses at stops near this post code ');
         }

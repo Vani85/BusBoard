@@ -7,15 +7,21 @@ export const fetchPostCodeInfo = async (postCode) => {
     return response;
 }
 
-const URL = 'https://api.tfl.gov.uk/StopPoint/'
+const URL = 'https://api.tfl.gov.uk/'
 
 export const fetchTflStopPoints = async (latitude, longitude) => {
-    const response = await fetch(`${URL}?lat=${latitude}&lon=${longitude}&stopTypes=NaptanPublicBusCoachTram&modes=bus`);
+    const response = await fetch(`${URL}StopPoint/?lat=${latitude}&lon=${longitude}&stopTypes=NaptanPublicBusCoachTram&modes=bus`);
     return response;
 }
 
 export const fetchTflArrivals = async (stopCode) => {
-    const response = await fetch(`${URL}${stopCode}/Arrivals?api_key=${api_key}`);
+    const response = await fetch(`${URL}StopPoint/${stopCode}/Arrivals?api_key=${api_key}`);
+    return response;
+}
+
+export const fetchDirectionToStopPoint = async(postCode, stopPoint) => {
+    const response = await fetch(`${URL}Journey/JourneyResults/${postCode}/to/${stopPoint}`);
+
     return response;
 }
 
