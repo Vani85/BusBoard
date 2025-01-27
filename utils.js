@@ -23,10 +23,11 @@ export const validatePostCode = (postcode) => {
 
 export const getNearestStopPoints = (stopPoints,numberOfStopPoints) => {
     const arrStopPoints = [];
-    stopPoints.stopPoints.forEach(({naptanId, distance}) => {
+    stopPoints.stopPoints.forEach(({naptanId, distance, commonName}) => {
         const stopPoint = {
             naptanId,
-            distance
+            distance,
+            commonName
         };
         arrStopPoints.push(stopPoint);
 
