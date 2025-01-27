@@ -1,5 +1,10 @@
-
-
+import winston from 'winston';
+    export const logger = winston.createLogger({
+    transports: [
+        // new winston.transports.Console(),
+        new winston.transports.File({ filename: 'combined.log' })
+    ]
+});
 
 export const convertToMinutes = (seconds) => {
     const minutes = Math.floor(seconds / 60);
@@ -8,6 +13,8 @@ export const convertToMinutes = (seconds) => {
 };
 
 export const getNearestStopPoints = (stopPoints,numberOfStopPoints) => {
+    logger.log('info', stopPoints);
+
     const arrStopPoints = [];
     stopPoints.stopPoints.forEach(({naptanId, distance}) => {
         const stopPoint = {
@@ -28,13 +35,12 @@ export const getNearestStopPoints = (stopPoints,numberOfStopPoints) => {
 export const parseAndReturnArrivalData = (data, maxArrivals = 5) => {
     const arrivals = [];
 
-    data.forEach(({naptanId,lineId, timeToStation, destinationName, towards}) => {
+    data.forEach(({naptanId,lineId, timeToStation, destinationName}) => {
         const arrival = {
             naptanId,
             lineId,
             timeToStation: convertToMinutes(timeToStation),
             destinationName,
-            towards
         };
         arrivals.push(arrival);
         

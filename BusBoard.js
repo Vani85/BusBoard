@@ -1,5 +1,5 @@
 import { convertToMinutes, getNearestStopPoints, parseAndReturnArrivalData } from './utils.js';
-import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validateResponse, validatePostCode} from './fetch.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validatePostCode} from './fetch.js';
 import readlineSync from 'readline-sync';
 
 export const getPostCode = () => {
@@ -9,14 +9,14 @@ export const getPostCode = () => {
 
 const printHeading = () => {
     console.log("===========================================================================");
-    console.log('Stop Id' + '\t\t'+ 'Bus' + "\t" + 'Time' + "\t" + 'Destination' + "\t\t\t" + 'Route'); 
+    console.log('Stop Id' + '\t\t'+ 'Bus' + "\t" + 'Time' + "\t" + 'Destination'); 
     console.log("===========================================================================");
 }
 
 const printBusInformation = (data) => {
     printHeading();
     data.forEach(element => {
-        console.log(element.naptanId + '\t' + element.lineId + "\t" + element.timeToStation + "\t" + element.destinationName + "\t\t" + element.towards)  
+        console.log(element.naptanId + '\t' + element.lineId + "\t" + element.timeToStation + "\t" + element.destinationName)  
     })
 }
 
@@ -37,7 +37,7 @@ const getPostCodeInformation = async(postCode) => {
 }
 
 const getBusStopPointsFromPostCode = async(postCodeData) => {
-    const tflStopPointsResponse = await fetchTflStopPoints(postCodeData);
+    const tflStopPointsResponse = await fetchTflStopPoints(postCodeData.result.latitude, postCodeData.result.longitude);
     const stopPointsData = await tflStopPointsResponse.json();
     const stopPoints = getNearestStopPoints(stopPointsData,2);
     return stopPoints;
@@ -57,6 +57,11 @@ const getArrivalInformationForAllStopPoints = async(stopPoints) => {
 
     return Promise.all(arrivalInformation);
 }
+
+//NW5 1TL -- Softwire Bus Stop
+//B34 6AL -- no stop points
+//?>(234234 -- TypeError: Cannot read properties of undefined (reading 'latitude')
+// !need to check the case with no arriving buses
 
 try {
     let postCode;// = await getPostCodeInformation();

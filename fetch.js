@@ -1,4 +1,5 @@
 import fetch from 'node-fetch';
+import { logger } from './utils.js';
 const api_key = process.env.API_KEY
 
 export const fetchPostCodeInfo = async (postCode) => {
@@ -6,26 +7,22 @@ export const fetchPostCodeInfo = async (postCode) => {
     return response;
 }
 
-export const fetchTflStopPoints = async (postCodeResponse) => {
-    const response = await fetch(`https://api.tfl.gov.uk/StopPoint/?lat=${postCodeResponse.result.latitude}&lon=${postCodeResponse.result.longitude}&stopTypes=NaptanPublicBusCoachTram&modes=bus`);
+const URL = 'https://api.tfl.gov.uk/StopPoint/'
+
+export const fetchTflStopPoints = async (latitude, longitude) => {
+    const response = await fetch(`${URL}?lat=${latitude}&lon=${longitude}&stopTypes=NaptanPublicBusCoachTram&modes=bus`);
     return response;
 }
 
 export const fetchTflArrivals = async (stopCode) => {
-    const response = await fetch(`https://api.tfl.gov.uk/StopPoint/${stopCode}/Arrivals?api_key=${api_key}`);
+    const response = await fetch(`${URL}${stopCode}/Arrivals?api_key=${api_key}`);
     return response;
 }
 
-export const validateResponse = (response) => {
-    if (response.status !== 200) {
-        return false;
-    } 
-
-    return true;
-} 
-
 export const validatePostCode = (response) => {   
-    if (response.status !== 200 && response.statusText == 'Not Found') {
+    if (response.status !== 200 || response.statusText == 'Not Found' ) {
+        logger.log('error',response);
+
         return false;
     } 
 
