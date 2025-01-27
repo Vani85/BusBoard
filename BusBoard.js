@@ -1,5 +1,5 @@
-import { convertToMinutes, getNearestStopPoints, parseAndReturnArrivalData } from './utils.js';
-import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validatePostCode, fetchDirectionToStopPoint} from './fetch.js';
+import { convertToMinutes, getNearestStopPoints, parseAndReturnArrivalData, parseAndReturnDirectionData, validatePostCode} from './utils.js';
+import { fetchPostCodeInfo, fetchTflStopPoints, fetchTflArrivals, validatePostCodeThroughAPI,  fetchDirectionToStopPoint} from './fetch.js';
 import readlineSync from 'readline-sync';
 
 export const getPostCode = () => {
@@ -7,9 +7,14 @@ export const getPostCode = () => {
     return readlineSync.prompt();
 }
 
+export const getDirectionChoice = () => {
+    console.log("Do you want to see the direction to the bus stops (Y/N)?");
+    return readlineSync.prompt();
+}
+
 const printHeading = () => {
     console.log("===========================================================================");
-    console.log('Stop Id' + '\t\t'+ 'Bus' + "\t" + 'Time' + "\t" + 'Destination'); 
+    console.log('\x1b[32m%s\x1b[0m','Stop Id' + '\t\t'+ 'Bus' + "\t" + 'Time' + "\t" + 'Destination'); 
     console.log("===========================================================================");
 }
 
@@ -20,20 +25,23 @@ const printBusInformation = (data) => {
     })
 }
 
+const printDirectionInformation = (naptanId,directionInformation) => {
+    console.log ('\x1b[32m%s\x1b[0m',"Direction to the stop point : " + naptanId);
+    console.log("==============================================")
+    console.log(parseAndReturnDirectionData(directionInformation));
+    console.log("==============================================")
+}
 
-const getPostCodeInformation = async(postCode) => {
-    try {       
-        const postCodeResponse = await fetchPostCodeInfo(postCode);
-        if (!validatePostCode(postCodeResponse)) {
-            console.log('You entered wrong postcode')
-            return null;
-        }
 
-        const postCodeData = await postCodeResponse.json();
-        return postCodeData;
-    } catch(error) {
-        throw error;
+const getPostCodeInformation = async(postCode) => {      
+    const postCodeResponse = await fetchPostCodeInfo(postCode);
+    if (!validatePostCodeThroughAPI(postCodeResponse)) {
+        console.log('You entered wrong postcode. Please try again')
+        return null;
     }
+    const postCodeData = await postCodeResponse.json();
+    return postCodeData;
+ 
 }
 
 const getBusStopPointsFromPostCode = async(postCodeData) => {
@@ -44,73 +52,56 @@ const getBusStopPointsFromPostCode = async(postCodeData) => {
 }
 
 const getDirectionInformationForAStopPoint = async(postCode, naptanId) => {
-    const tflDirectionResponse = fetchDirectionToStopPoint(postCode, naptanId);
-    const tflDirectionData = (await tflDirectionResponse).json();
-
+    const tflDirectionResponse = await fetchDirectionToStopPoint(postCode, naptanId);
+    const tflDirectionData = await tflDirectionResponse.json();
     return tflDirectionData;
 }
 
-const getDirectionInformation = async(postCode, stopPoints) => {
-    const directionInformation = [];    
-    stopPoints.forEach((point) => {
-        directionInformation.push(getDirectionInformationForAStopPoint(postCode, point.naptanId));
-    })
-    return Promise.all(directionInformation);
-}
-
-const getArrivalInformationForAStopPoint = async(point) => {
-    const tflStopResponse = await fetchTflArrivals(point.naptanId);
+const getArrivalInformationForAStopPoint = async(naptanId) => {
+    const tflStopResponse = await fetchTflArrivals(naptanId);
     const stopPointsData  = await tflStopResponse.json();
     return stopPointsData;
 }
 
-const getArrivalInformationForAllStopPoints = async(stopPoints) => {
-    const arrivalInformation = [];    
-    stopPoints.forEach((point) => {
-        arrivalInformation.push(getArrivalInformationForAStopPoint(point));
-    })   
-
-    return Promise.all(arrivalInformation);
-}
-
-//NW5 1TL -- Softwire Bus Stop
-//B34 6AL -- no stop points
-//?>(234234 -- TypeError: Cannot read properties of undefined (reading 'latitude')
-// !need to check the case with no arriving buses
-
-try {
-    let postCode;// = await getPostCodeInformation();
-    let postCodeInformation;
-    while (postCodeInformation == null) {
-        postCode = getPostCode();
+let postCode;
+let postCodeInformation;
+while (postCodeInformation == null) {
+    postCode = getPostCode();
+    if (validatePostCode(postCode)) 
         postCodeInformation = await getPostCodeInformation(postCode);
+    else {
+        console.log('You entered wrong postcode. Please try again');
     }
+}   
 
-    const stopPoints = await getBusStopPointsFromPostCode(postCodeInformation);
-    if(stopPoints!==null) {
+//logger.log('info', 'Entered PostCode : ' + postCode);
+const plannerChoice = getDirectionChoice();
+//logger.log('info', 'Entered Direction Choice  : ' + plannerChoice);
+const stopPoints = await getBusStopPointsFromPostCode(postCodeInformation);
 
-        const arrivalInformation = await getArrivalInformationForAllStopPoints(stopPoints);  
-        const directionInformation = await getDirectionInformation(postCode, stopPoints);      
+if (stopPoints !== null) {
+    for (let stopPoint of stopPoints) {
+        const { naptanId } = stopPoint;
+        const arrivalInformation = await getArrivalInformationForAStopPoint(naptanId);  
 
-        if (arrivalInformation !== null) {
-            arrivalInformation.forEach((arrivals) => {
-                printBusInformation(parseAndReturnArrivalData(arrivals));
-            })
-            
-            for (let directionInfo of directionInformation) {
-                console.log(directionInfo);
-            }
-        } else {
-            console.log('There are currently no busses at stops near this post code ');
+        if (plannerChoice.toUpperCase() === 'Y') {
+            const directionInformation = await getDirectionInformationForAStopPoint(postCode, naptanId);  
+            printDirectionInformation(naptanId,directionInformation)   ;
+            console.log("\n");
         }
 
-    } else {
-        console.log("Found no stop points for the given post code");
+        if (arrivalInformation.length !== 0) {
+            printBusInformation(parseAndReturnArrivalData(arrivalInformation));
+            console.log("\n");
+        } else {
+            console.log(`There are currently no busses at this stop(${naptanId})`);
+            console.log("=============================================================")
+            console.log("\n");
+        }
     }
-} catch(error) {
-    console.log(error);
+} else {
+    console.log("Found no stop points for the given post code");
 }
-
  
 
 
